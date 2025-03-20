@@ -496,16 +496,19 @@ class RDMs:
         else:
             new_descriptors = deepcopy(self.descriptors)
         return RDMs(
-            dissimilarities=np.array([_mean(self.dissimilarities, self.rdm_descriptors, weights, axis)]),
+            dissimilarities=np.array(_mean(self.dissimilarities, self.rdm_descriptors, weights, axis)),
             dissimilarity_measure=self.dissimilarity_measure,
             descriptors=new_descriptors,
             pattern_descriptors=deepcopy(self.pattern_descriptors),
-            rdm_descriptors=_update_rdm_descriptors_after_mean(axis)
+            rdm_descriptors=self._update_rdm_descriptors_after_mean(axis)
         )
 
     def _update_rdm_descriptors_after_mean(self, axis=None):
+
+        rdm_descriptors = deepcopy(self.rdm_descriptors)
+
         if axis == None:
-            return self.rdm_descriptors
+            return rdm_descriptors
         else:
             # Get descriptor values (group labels)
             descriptors = []
@@ -524,7 +527,7 @@ class RDMs:
                 if key not in axis and key != 'index':
                     rdm_descriptors[key] = unique_desc[i]
                     i += 1
-            rdm_descriptors.pop('axis', None)
+            rdm_descriptors.pop(axis, None)
             rdm_descriptors['index'] = np.arange(unique_desc.shape[1])
 
             return rdm_descriptors

@@ -168,13 +168,14 @@ def _mean(vectors: np.ndarray, rdm_descriptors: dict, weights: Optional[np.ndarr
         ndarray: Averaged vector of shape (nconds,) or (n_groups, nconds).
     """
     if weights is None:
-        weights = np.ones(vectors.shape[0])  # Make sure weights are (n,)
+        weights = np.ones(vectors.shape)  # Make sure weights are (n,)
         weights[np.isnan(vectors)] = np.nan
 
     if axis is None:
         # Compute weighted sum across all RDMs
         weighted_sum = np.nansum(vectors * weights, axis=0)
         return weighted_sum / np.nansum(weights, axis=0)
+
     weighted_vectors = vectors * weights
 
     # Get descriptor values (group labels)
@@ -195,8 +196,7 @@ def _mean(vectors: np.ndarray, rdm_descriptors: dict, weights: Optional[np.ndarr
     np.add.at(weighted_sum, inverse_indices, weighted_vectors)
     np.add.at(weights_part, inverse_indices, weights)
 
-    # Compute weighted mean for each group
-    return weighted_sum / weights_part, rdm_descriptors
+    return weighted_sum / weights_part
 
 
 def _ss(vectors: ndarray) -> ndarray:
