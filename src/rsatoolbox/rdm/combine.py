@@ -152,23 +152,51 @@ def rescale(rdms, method: str = 'evidence', threshold=1e-8):
     )
 
 
-def _mean(vectors: ndarray, weights: Optional[ndarray] = None) -> ndarray:
-    """Weighted mean of RDM vectors, ignores nans
+def _mean(vectors: np.ndarray, rdm_descriptors: dict, weights: Optional[np.ndarray] = None,
+          axis: Optional[str] = None) -> np.ndarray:
+    """Weighted mean of RDM vectors, ignores NaNs, grouped by descriptor.
 
     See :meth:`rsatoolbox.rdm.rdms.RDMs.mean`
 
     Args:
-        vectors (ndarray): dissimilarity vectors of shape (nrdms, nconds)
-        weights (ndarray, optional): Same shape as vectors.
+        vectors (ndarray): Dissimilarity vectors of shape (nrdms, nconds).
+        rdm_descriptors (dict): Dictionary with descriptors for each RDM.
+        weights (ndarray, optional): Vector of shape (nrdms,).
+        axis (str, optional): Key to group by in rdm_descriptors.
 
     Returns:
-        ndarray: Average vector of shape (nconds,)
+        ndarray: Averaged vector of shape (nconds,) or (n_groups, nconds).
     """
     if weights is None:
-        weights = np.ones(vectors.shape)
+        weights = np.ones(vectors.shape[0])  # Make sure weights are (n,)
         weights[np.isnan(vectors)] = np.nan
-    weighted_sum = np.nansum(vectors * weights, axis=0)
-    return weighted_sum / np.nansum(weights, axis=0)
+
+    if axis is None:
+        # Compute weighted sum across all RDMs
+        weighted_sum = np.nansum(vectors * weights, axis=0)
+        return weighted_sum / np.nansum(weights, axis=0)
+    weighted_vectors = vectors * weights
+
+    # Get descriptor values (group labels)
+    descriptors = []
+    for key in rdm_descriptors.keys():
+        if key not in axis and key!='index':
+            descriptors.append(np.array(rdm_descriptors[key]))
+
+    # Find unique groups and their indices
+    combined_descr = np.vstack(descriptors)
+    unique_desc, inverse_indices = np.unique(combined_descr, axis=1, return_inverse=True)
+
+    # init weighted_sum and weights_part
+    weighted_sum = np.zeros((unique_desc.shape[1], weighted_vectors.shape[1]))
+    weights_part = np.zeros((unique_desc.shape[1], weights.shape[1]))
+
+    # make sum
+    np.add.at(weighted_sum, inverse_indices, weighted_vectors)
+    np.add.at(weights_part, inverse_indices, weights)
+
+    # Compute weighted mean for each group
+    return weighted_sum / weights_part, rdm_descriptors
 
 
 def _ss(vectors: ndarray) -> ndarray:

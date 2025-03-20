@@ -476,7 +476,7 @@ class RDMs:
         if reindex:
             self.pattern_descriptors['index'] = list(range(self.n_cond))
 
-    def mean(self, weights=None):
+    def mean(self, weights=None, axis=None):
         """Average rdm of all rdms contained
 
         Args:
@@ -496,11 +496,38 @@ class RDMs:
         else:
             new_descriptors = deepcopy(self.descriptors)
         return RDMs(
-            dissimilarities=np.array([_mean(self.dissimilarities, weights)]),
+            dissimilarities=np.array([_mean(self.dissimilarities, self.rdm_descriptors, weights, axis)]),
             dissimilarity_measure=self.dissimilarity_measure,
             descriptors=new_descriptors,
-            pattern_descriptors=deepcopy(self.pattern_descriptors)
+            pattern_descriptors=deepcopy(self.pattern_descriptors),
+            rdm_descriptors=_update_rdm_descriptors_after_mean(axis)
         )
+
+    def _update_rdm_descriptors_after_mean(self, axis=None):
+        if axis == None:
+            return self.rdm_descriptors
+        else:
+            # Get descriptor values (group labels)
+            descriptors = []
+            for key in rdm_descriptors.keys():
+                if key not in axis and key != 'index':
+                    descriptors.append(np.array(rdm_descriptors[key]))
+
+            # Find unique groups and their indices
+            combined_descr = np.vstack(descriptors)
+            unique_desc = np.unique(combined_descr, axis=1)
+
+            # update rdm_descriptors
+            descriptors = []
+            i = 0
+            for key in rdm_descriptors.keys():
+                if key not in axis and key != 'index':
+                    rdm_descriptors[key] = unique_desc[i]
+                    i += 1
+            rdm_descriptors.pop('axis', None)
+            rdm_descriptors['index'] = np.arange(unique_desc.shape[1])
+
+            return rdm_descriptors
 
 
 def rdms_from_dict(rdm_dict):
